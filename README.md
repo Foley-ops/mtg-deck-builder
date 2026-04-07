@@ -7,6 +7,14 @@ Works with any commander, any color identity. Optionally takes your collection C
 ## Setup
 
 ```bash
+pip install torch torch-geometric requests numpy
+pip install -e ".[dev]"
+```
+
+Automatically uses CUDA (NVIDIA), MPS (Apple Silicon), or CPU -- whatever's available.
+
+For CPU-only installs:
+```bash
 pip install torch --index-url https://download.pytorch.org/whl/cpu
 pip install torch-geometric requests numpy
 pip install -e ".[dev]"
@@ -87,9 +95,15 @@ SQLite at `~/.mtg_deck_builder/deck_builder.db`. Stores card data (7d TTL), syne
 
 ## Output
 
-For each bracket you get:
-- A `.txt` decklist importable into ManaBox/Archidekt/Moxfield
-- Console output with top 25 cards, game changers, CMC, price estimate, buy list (if collection loaded), and bracket diffs
+Each run generates three file types per bracket, plus a combined report:
+
+- `<commander>_b1.txt` through `_b4.txt` -- plain decklists, importable into ManaBox/Archidekt/Moxfield
+- `<commander>_b1.csv` through `_b4.csv` -- full card data with type, CMC, owned status, and price
+- `<commander>_report.md` -- markdown report with table of contents, stats tables, top 25 rankings, full decklists, bracket diffs, and embedding analysis
+
+Use `--output-dir ./my_folder` to control where files go.
+
+Terminal output is kept compact -- one summary line per bracket with card count, game changers, CMC, price, and buy count.
 
 ## Tests
 
