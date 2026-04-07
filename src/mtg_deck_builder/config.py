@@ -5,7 +5,14 @@ import random
 import numpy as np
 import torch
 
-DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+def _get_device():
+    if torch.cuda.is_available():
+        return torch.device("cuda")
+    if hasattr(torch.backends, "mps") and torch.backends.mps.is_available():
+        return torch.device("mps")
+    return torch.device("cpu")
+
+DEVICE = _get_device()
 EMBED_DIM = 64
 HIDDEN_DIM = 128
 NUM_HEADS = 4
