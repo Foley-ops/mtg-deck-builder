@@ -20,11 +20,30 @@ pip install torch-geometric requests numpy
 pip install -e ".[dev]"
 ```
 
-Docker:
+Docker (recommended):
+```bash
+# edit docker-compose.yml to set your commander, collection, etc.
+docker compose up
+
+# or override just the commander
+COMMANDER="Atraxa, Praetors' Voice" docker compose up
+```
+
+Output files land in `./output` on your machine. Edit the `environment` block in `docker-compose.yml` to change settings:
+
+```yaml
+environment:
+  - COMMANDER=Ms. Bumbleflower
+  - COLLECTION=./data/my_cards.csv
+  - PREFER_OWNED=true
+  - BRACKET=0        # 0 = all brackets
+  - ARCHETYPE=0      # 0=group_hug 1=counters 2=wheels 3=cantrips
+  - EPOCHS=200
+```
+
+Plain docker if you prefer:
 ```bash
 docker build -t mtg-deck-builder .
-
-# mount ./output so generated files land on your machine
 docker run --rm -v $(pwd)/output:/app/output mtg-deck-builder \
   python -m mtg_deck_builder --commander "Ms. Bumbleflower"
 ```

@@ -1,6 +1,7 @@
 """CLI."""
 
 import argparse
+import os
 
 import torch
 
@@ -24,24 +25,38 @@ from mtg_deck_builder.selector import DeckSelector
 
 def main():
     p = argparse.ArgumentParser(description="MTG GNN Deck Optimizer")
+    # env vars as defaults so docker-compose can configure everything
+    env = os.environ
     p.add_argument(
-        "--commander", type=str, default="Ms. Bumbleflower",
+        "--commander", type=str,
+        default=env.get("COMMANDER", "Ms. Bumbleflower"),
         help="Commander name (Scryfall fuzzy matching)",
     )
-    p.add_argument("--train-epochs", type=int, default=200)
+    p.add_argument("--train-epochs", type=int,
+                    default=int(env.get("EPOCHS", "200")))
     p.add_argument("--lr", type=float, default=1e-3)
-    p.add_argument("--bracket", type=int, default=0, help="0=all")
-    p.add_argument("--archetype", type=int, default=0,
+    p.add_argument("--bracket", type=int,
+                    default=int(env.get("BRACKET", "0")), help="0=all")
+    p.add_argument("--archetype", type=int,
+                    default=int(env.get("ARCHETYPE", "0")),
                     help="0=group_hug 1=counters 2=wheels 3=cantrips")
-    p.add_argument("--collection", type=str, help="Path to collection CSV")
-    p.add_argument("--prefer-owned", action="store_true", help="Boost owned cards")
+    p.add_argument("--collection", type=str,
+                    default=env.get("COLLECTION") or None,
+                    help="Path to collection CSV")
+    p.add_argument("--prefer-owned", action="store_true",
+                    default=env.get("PREFER_OWNED", "").lower() in ("true", "1", "yes"),
+                    help="Boost owned cards")
     p.add_argument("--generate-template", action="store_true",
                     help="Write collection_template.csv and exit")
     p.add_argument("--db", type=str, default=None, help="Path to SQLite database")
     p.add_argument("--output-dir", type=str, default="./output", help="Output directory for reports")
-    p.add_argument("--refresh", action="store_true", help="Force re-fetch all API data")
+    p.add_argument("--refresh", action="store_true",
+                    default=env.get("REFRESH", "").lower() in ("true", "1", "yes"),
+                    help="Force re-fetch all API data")
     p.add_argument("--clear-collection", action="store_true", help="Remove stored collection")
-    p.add_argument("--force-train", action="store_true", help="Force re-training")
+    p.add_argument("--force-train", action="store_true",
+                    default=env.get("FORCE_TRAIN", "").lower() in ("true", "1", "yes"),
+                    help="Force re-training")
     args = p.parse_args()
 
     if args.generate_template:

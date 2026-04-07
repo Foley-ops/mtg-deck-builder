@@ -1,0 +1,17 @@
+services:
+  deck-builder:
+    build: .
+    volumes:
+      - ./output:/app/output
+      - ./data:/app/data
+    environment:
+      - COMMANDER=Ms. Bumbleflower
+      - BRACKET=0
+      - ARCHETYPE=0
+      - EPOCHS=200
+      - COLLECTION=
+      - PREFER_OWNED=false
+      - FORCE_TRAIN=false
+      - REFRESH=false
+    entrypoint: ["python", "-m", "mtg_deck_builder"]
+    command: []
