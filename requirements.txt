@@ -1,0 +1,5 @@
+torch
+torch-geometric
+requests
+numpy
+tqdm
