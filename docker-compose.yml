@@ -6,8 +6,8 @@ services:
       - ./data:/app/data
     environment:
       - COMMANDER=Ms. Bumbleflower
+      - THEME=
       - BRACKET=0
-      - ARCHETYPE=0
       - EPOCHS=200
       - COLLECTION=
       - PREFER_OWNED=false

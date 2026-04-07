@@ -24,22 +24,23 @@ from mtg_deck_builder.selector import DeckSelector
 
 
 def main():
-    p = argparse.ArgumentParser(description="MTG GNN Deck Optimizer")
-    # env vars as defaults so docker-compose can configure everything
     env = os.environ
+    p = argparse.ArgumentParser(description="MTG GNN Deck Optimizer")
     p.add_argument(
         "--commander", type=str,
-        default=env.get("COMMANDER", "Ms. Bumbleflower"),
+        default=env.get("COMMANDER") or None,
         help="Commander name (Scryfall fuzzy matching)",
     )
+    p.add_argument("--theme", type=str,
+                    default=env.get("THEME") or None,
+                    help="EDHREC theme slug (e.g. group-hug, spellslinger, voltron)")
+    p.add_argument("--list-themes", action="store_true",
+                    help="Show available themes for the commander and exit")
     p.add_argument("--train-epochs", type=int,
                     default=int(env.get("EPOCHS", "200")))
     p.add_argument("--lr", type=float, default=1e-3)
     p.add_argument("--bracket", type=int,
                     default=int(env.get("BRACKET", "0")), help="0=all")
-    p.add_argument("--archetype", type=int,
-                    default=int(env.get("ARCHETYPE", "0")),
-                    help="0=group_hug 1=counters 2=wheels 3=cantrips")
     p.add_argument("--collection", type=str,
                     default=env.get("COLLECTION") or None,
                     help="Path to collection CSV")
@@ -49,7 +50,7 @@ def main():
     p.add_argument("--generate-template", action="store_true",
                     help="Write collection_template.csv and exit")
     p.add_argument("--db", type=str, default=None, help="Path to SQLite database")
-    p.add_argument("--output-dir", type=str, default="./output", help="Output directory for reports")
+    p.add_argument("--output-dir", type=str, default="./output", help="Output directory")
     p.add_argument("--refresh", action="store_true",
                     default=env.get("REFRESH", "").lower() in ("true", "1", "yes"),
                     help="Force re-fetch all API data")
@@ -62,6 +63,9 @@ def main():
     if args.generate_template:
         generate_template_csv()
         return
+
+    if not args.commander:
+        p.error("--commander is required (e.g. --commander \"Ms. Bumbleflower\")")
 
     db = Database(db_path=args.db, force_refresh=args.refresh)
 
@@ -76,6 +80,20 @@ def main():
     commander = resolve_commander(args.commander, db)
     print(f"  {commander.name} ({', '.join(sorted(commander.color_identity))})")
 
+    # --list-themes: discover and print themes, then exit
+    if args.list_themes:
+        graph = CardGraph(commander, db)
+        # just need the EDHREC main page to discover themes
+        from mtg_deck_builder.api.edhrec import edhrec_json
+        main_data = edhrec_json(f"commanders/{commander.edhrec_slug}", db)
+        themes = graph._discover_themes(main_data)
+        print(f"\n  Available themes for {commander.name}:")
+        for t in themes:
+            print(f"    {t}")
+        print(f"\n  Usage: --theme {themes[0] if themes else 'group-hug'}")
+        db.close()
+        return
+
     # collection
     collection = None
     if args.collection:
@@ -89,7 +107,7 @@ def main():
             print(f"  Collection: {len(collection)} cards (from db)")
 
     # build graph
-    graph = CardGraph(commander, db, collection)
+    graph = CardGraph(commander, db, collection, theme=args.theme)
     graph.load_all_data()
     if len(graph.cards) < 20:
         print("\nERROR: too few cards. Check network.")
@@ -111,6 +129,8 @@ def main():
 
     if cached_emb is not None:
         print(f"  Using cached embeddings ({len(cached_emb)} cards)")
+        # load cached embeddings into a fresh model forward pass so selector works
+        # (selector needs model + data, not raw embeddings)
     else:
         param_count = sum(p.numel() for p in model.parameters())
         print(f"\n  Training GNN ({param_count:,} params, {args.train_epochs} epochs, {DEVICE})")
@@ -137,7 +157,7 @@ def main():
     selector = DeckSelector(commander, graph, model, data)
     print(f"\n  Selecting decks:")
     for b in brackets:
-        deck, scores = selector.select(b, args.archetype, args.prefer_owned)
+        deck, scores = selector.select(b, args.prefer_owned)
         decks[b] = deck
         scores_by_bracket[b] = scores
 
@@ -150,6 +170,8 @@ def main():
 
     # generate all output files
     file_slug = name_to_edhrec_slug(commander.name)
+    if args.theme:
+        file_slug += f"_{args.theme}"
     written = generate_reports(
         commander, graph, decks, scores_by_bracket, embeddings,
         output_dir=args.output_dir, file_slug=file_slug,

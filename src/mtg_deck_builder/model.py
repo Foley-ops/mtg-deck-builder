@@ -5,8 +5,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch_geometric.nn import GATv2Conv
 
-from mtg_deck_builder.card import Card
-from mtg_deck_builder.config import DEVICE, EMBED_DIM
+from mtg_deck_builder.config import DEVICE
 
 
 class CardGNN(nn.Module):
@@ -41,13 +40,11 @@ class CardGNN(nn.Module):
 
 
 class SynergyPredictor(nn.Module):
-    """GNN + archetype-conditioned deck scoring."""
+    """GNN wrapper. Scores cards by dot-product similarity to commander."""
 
     def __init__(self, gnn):
         super().__init__()
         self.gnn = gnn
-        self.archetype_embeddings = nn.Embedding(8, EMBED_DIM)
-        self.archetype_gate = nn.Linear(EMBED_DIM * 2, EMBED_DIM)
 
     def get_embeddings(self, x, edge_index, edge_attr=None):
         return self.gnn(x, edge_index, edge_attr)
@@ -55,17 +52,9 @@ class SynergyPredictor(nn.Module):
     def predict_edge(self, embeddings, src, dst):
         return (embeddings[src] * embeddings[dst]).sum(dim=-1)
 
-    def score_deck_candidates(self, embeddings, commander_idx, archetype_idx=0):
+    def score_deck_candidates(self, embeddings, commander_idx):
         cmd = embeddings[commander_idx].unsqueeze(0)
-        arch = self.archetype_embeddings(
-            torch.tensor(archetype_idx, device=embeddings.device)
-        ).unsqueeze(0)
-        combined = torch.cat(
-            [cmd.expand_as(embeddings), arch.expand(embeddings.size(0), -1)], dim=-1
-        )
-        gate = torch.sigmoid(self.archetype_gate(combined))
-        query = gate * cmd + (1 - gate) * arch
-        return (embeddings * query).sum(dim=-1)
+        return (embeddings * cmd).sum(dim=-1)
 
 
 def train_gnn(model, data, edge_weights, epochs=200, lr=1e-3, neg_ratio=5):
@@ -92,11 +81,7 @@ def train_gnn(model, data, edge_weights, epochs=200, lr=1e-3, neg_ratio=5):
         neg_src = src.repeat(neg_ratio)
         neg_dst = torch.randint(0, num_nodes, (len(neg_src),), device=DEVICE)
         neg_loss = -torch.mean(F.logsigmoid(-model.predict_edge(emb, neg_src, neg_dst)))
-        ae = model.archetype_embeddings.weight
-        arch_reg = (
-            (torch.mm(ae, ae.t()) * (1 - torch.eye(ae.size(0), device=DEVICE))) ** 2
-        ).mean() * 0.1
-        loss = pos_loss + neg_loss + arch_reg
+        loss = pos_loss + neg_loss
         loss.backward()
         torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
         optimizer.step()

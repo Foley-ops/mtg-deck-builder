@@ -6,23 +6,17 @@ from collections import defaultdict
 
 COLLECTION_TEMPLATE = """\
 name,quantity,foil,condition,set_code,binder
-Sol Ring,1,false,NM,C21,Precon Cards
-Swords to Plowshares,2,false,NM,MH3,Mix
-Rhystic Study,1,false,NM,MH3,ATLA
-Cyclonic Rift,1,true,NM,MM3,ATLA
-Ms. Bumbleflower,1,false,NM,BLC,Precon Cards
-Mr. Foxglove,1,false,NM,BLC,Precon Cards
-Selvala Explorer Returned,1,false,NM,BLC,Precon Cards
-Kwain Itinerant Meddler,1,false,NM,BLC,Precon Cards
-Rites of Flourishing,1,false,NM,BLC,Precon Cards
-Kalonian Hydra,1,false,NM,BLC,Precon Cards
-Managorger Hydra,1,false,NM,BLC,Precon Cards
-Body of Knowledge,1,false,NM,BLC,Precon Cards
-Psychosis Crawler,1,false,NM,BLC,Precon Cards
-Triskaidekaphile,1,false,NM,BLC,Precon Cards
-Forest,15,false,NM,,Precon Cards
-Plains,10,false,NM,,Precon Cards
-Island,10,false,NM,,Precon Cards
+Sol Ring,2,false,NM,,Staples
+Command Tower,3,false,NM,,Staples
+Swords to Plowshares,2,false,NM,,Staples
+Arcane Signet,2,false,NM,,Staples
+Lightning Greaves,1,false,NM,,Staples
+Cultivate,1,false,NM,,Staples
+Forest,15,false,NM,,Basics
+Plains,10,false,NM,,Basics
+Island,10,false,NM,,Basics
+Swamp,10,false,NM,,Basics
+Mountain,10,false,NM,,Basics
 """
 
 

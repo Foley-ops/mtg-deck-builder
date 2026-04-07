@@ -7,6 +7,7 @@ import torch
 from torch_geometric.data import Data
 
 from mtg_deck_builder.card import Card
+from mtg_deck_builder.config import COMBO_EDGE_WEIGHT, MIN_SYNERGY_EDGE_WEIGHT, SCRYFALL_STAPLE_LIMIT, SCRYFALL_SET_LIMIT
 from mtg_deck_builder.db import Database
 from mtg_deck_builder.commander import Commander
 from mtg_deck_builder.api.scryfall import scryfall_search, scryfall_batch, fetch_game_changers
@@ -18,7 +19,7 @@ BRACKET_SLUGS = ["exhibition", "core", "upgraded", "optimized"]
 
 
 class CardGraph:
-    def __init__(self, commander: Commander, db: Database, collection=None):
+    def __init__(self, commander: Commander, db: Database, collection=None, theme=None):
         self.commander = commander
         self.db = db
         self.cards: dict[str, Card] = {}
@@ -29,12 +30,16 @@ class CardGraph:
         self.card_combos: dict[str, list] = defaultdict(list)
         self.game_changers: set[str] = set()
         self.collection = collection or {}
+        self.theme = theme
+        self.available_themes: list[str] = []
 
     def load_all_data(self):
         cmd = self.commander
         print("=" * 60)
         print("MTG DECK OPTIMIZER v3 -- GNN EDITION")
         print(f"Commander: {cmd.name} ({cmd.color_filter.upper()}) | Slug: {cmd.edhrec_slug}")
+        if self.theme:
+            print(f"Theme: {self.theme}")
         if self.collection:
             print(f"Collection: {len(self.collection)} unique cards")
         cs = self.db.stats()
@@ -72,22 +77,69 @@ class CardGraph:
 
     def _load_edhrec(self):
         slug = self.commander.edhrec_slug
-        # Main page + bracket pages
-        slugs = [f"commanders/{slug}"]
-        for bracket_slug in BRACKET_SLUGS:
-            slugs.append(f"commanders/{slug}/{bracket_slug}")
 
-        for s in slugs:
-            label = s.split("/")[-1]
-            print(f"  {label}...", end=" ")
+        # main page (also used to discover themes)
+        print(f"  main...", end=" ")
+        main_data = edhrec_json(f"commanders/{slug}", self.db)
+        recs = edhrec_extract_cards(main_data)
+        print(f"{len(recs)} cards")
+        for c in recs:
+            if c["name"] and c["name"] != self.commander.name:
+                self._upsert(c["name"], c["synergy"], c["num_decks"], c["potential_decks"])
+
+        # discover available themes from the commander page
+        self.available_themes = self._discover_themes(main_data)
+        if self.available_themes:
+            print(f"  themes: {', '.join(self.available_themes[:10])}"
+                  + (f" (+{len(self.available_themes)-10} more)" if len(self.available_themes) > 10 else ""))
+
+        # bracket pages
+        for bracket_slug in BRACKET_SLUGS:
+            s = f"commanders/{slug}/{bracket_slug}"
+            print(f"  {bracket_slug}...", end=" ")
             recs = edhrec_extract_cards(edhrec_json(s, self.db))
             print(f"{len(recs)} cards")
             for c in recs:
                 if c["name"] and c["name"] != self.commander.name:
                     self._upsert(c["name"], c["synergy"], c["num_decks"], c["potential_decks"])
 
+        # theme-specific data (overrides synergy scores with theme-tuned values)
+        if self.theme:
+            self._load_theme_data()
+
         # try to find precon data if there is one
         self._try_load_precon()
+
+    def _discover_themes(self, main_data):
+        """Pull the list of available theme slugs from EDHREC's tag links."""
+        import re
+        raw = str(main_data)
+        slug = self.commander.edhrec_slug
+        pattern = rf'/tags/([^/]+)/{re.escape(slug)}'
+        themes = list(dict.fromkeys(re.findall(pattern, raw)))
+        return themes
+
+    def _load_theme_data(self):
+        """Fetch theme-specific synergy from EDHREC and override card scores."""
+        slug = self.commander.edhrec_slug
+        theme_path = f"commanders/{slug}/{self.theme}"
+        print(f"  theme ({self.theme})...", end=" ")
+        data = edhrec_json(theme_path, self.db)
+        recs = edhrec_extract_cards(data)
+        print(f"{len(recs)} cards")
+        if not recs:
+            print(f"  WARNING: no data for theme '{self.theme}'. Available: {', '.join(self.available_themes[:8])}")
+            return
+        # replace synergy scores with theme-specific values
+        for c in recs:
+            name = c["name"]
+            if name and name != self.commander.name:
+                if name not in self.cards:
+                    self._upsert(name)
+                self.cards[name].synergy_score = c.get("synergy", 0)
+                pd = c.get("potential_decks", 1)
+                if pd > 0:
+                    self.cards[name].inclusion_rate = c.get("num_decks", 0) / pd * 100
 
     def _try_load_precon(self):
         """Best-effort precon fetch from EDHREC."""
@@ -144,7 +196,7 @@ class CardGraph:
             results = scryfall_search(
                 f"format:commander legal:commander (id<={cf}) -t:basic game:paper",
                 self.db,
-                200,
+                SCRYFALL_STAPLE_LIMIT,
             )
             print(f"{len(results)} cards")
             self.db.upsert_cards_batch(results)
@@ -158,7 +210,7 @@ class CardGraph:
         if set_code:
             print(f"  Set {set_code.upper()}...", end=" ")
             try:
-                set_cards = scryfall_search(f"set:{set_code}", self.db, 150)
+                set_cards = scryfall_search(f"set:{set_code}", self.db, SCRYFALL_SET_LIMIT)
                 print(f"{len(set_cards)} cards")
                 self.db.upsert_cards_batch(set_cards)
                 for sc in set_cards:
@@ -273,7 +325,7 @@ class CardGraph:
                     * min(c1.inclusion_rate, c2.inclusion_rate)
                     / 100.0
                 )
-                if w > 0.001:
+                if w > MIN_SYNERGY_EDGE_WEIGHT:
                     edge_set.add((c1.idx, c2.idx, w))
                     edge_set.add((c2.idx, c1.idx, w))
 
@@ -284,8 +336,8 @@ class CardGraph:
                     if i >= j:
                         continue
                     if n1 in self.name_to_idx and n2 in self.name_to_idx:
-                        edge_set.add((self.name_to_idx[n1], self.name_to_idx[n2], 5.0))
-                        edge_set.add((self.name_to_idx[n2], self.name_to_idx[n1], 5.0))
+                        edge_set.add((self.name_to_idx[n1], self.name_to_idx[n2], COMBO_EDGE_WEIGHT))
+                        edge_set.add((self.name_to_idx[n2], self.name_to_idx[n1], COMBO_EDGE_WEIGHT))
 
         for card in self.cards.values():
             if card.idx != 0 and card.synergy_score != 0:

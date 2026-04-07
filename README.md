@@ -35,10 +35,10 @@ Output files land in `./output` on your machine. Edit the `environment` block in
 ```yaml
 environment:
   - COMMANDER=Ms. Bumbleflower
+  - THEME=group-hug          # EDHREC theme slug (use --list-themes to see options)
   - COLLECTION=./data/my_cards.csv
   - PREFER_OWNED=true
-  - BRACKET=0        # 0 = all brackets
-  - ARCHETYPE=0      # 0=group_hug 1=counters 2=wheels 3=cantrips
+  - BRACKET=0                # 0 = all brackets
   - EPOCHS=200
 ```
 
@@ -58,11 +58,15 @@ mtg-deck-builder --commander "Ms. Bumbleflower"
 # specific bracket
 mtg-deck-builder --commander "Atraxa, Praetors' Voice" --bracket 3
 
+# with a theme (pulls theme-specific synergy data from EDHREC)
+mtg-deck-builder --commander "Ms. Bumbleflower" --theme spellslinger
+mtg-deck-builder --commander "Ms. Bumbleflower" --theme voltron
+
+# see all available themes for a commander
+mtg-deck-builder --commander "Ms. Bumbleflower" --list-themes
+
 # with your collection (saved to local db, reused on future runs)
 mtg-deck-builder --commander "Ms. Bumbleflower" --collection my_cards.csv --prefer-owned
-
-# archetypes: 0=group_hug, 1=counters, 2=wheels, 3=cantrips
-mtg-deck-builder --commander "Ms. Bumbleflower" --archetype 1
 
 # force re-fetch from APIs
 mtg-deck-builder --commander "Ms. Bumbleflower" --refresh
@@ -71,7 +75,7 @@ mtg-deck-builder --commander "Ms. Bumbleflower" --refresh
 mtg-deck-builder --commander "Ms. Bumbleflower" --force-train
 ```
 
-Commander names use Scryfall fuzzy matching so you don't need exact spelling.
+Commander names use Scryfall fuzzy matching so you don't need exact spelling. `--commander` is required.
 
 ## How it works
 
