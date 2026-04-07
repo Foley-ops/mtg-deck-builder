@@ -54,12 +54,20 @@ class DeckSelector:
         if rules.prefer_precon_cards and self.graph.precon_cards:
             for c in self.graph.cards.values():
                 if c.name in self.graph.precon_cards and 0 <= c.idx < len(scores):
-                    scores[c.idx] += 0.4
+                    scores[c.idx] += 0.2
 
         if prefer_owned and self.graph.collection:
+            owned_in_pool = sum(1 for c in self.graph.cards.values() if c.owned_qty > 0)
+            total = len(self.graph.cards)
+            coverage = owned_in_pool / max(total, 1)
+            # less boost when you own most of the pool
+            base_boost = 0.3 * (1.0 - coverage * 0.7)
+            # higher brackets reach for power even if unowned
+            bracket_scale = {1: 1.0, 2: 1.0, 3: 0.5, 4: 0.25}.get(bracket, 0.5)
+            boost = base_boost * bracket_scale
             for c in self.graph.cards.values():
                 if c.owned_qty > 0 and 0 <= c.idx < len(scores):
-                    scores[c.idx] += 0.3
+                    scores[c.idx] += boost
 
         scored = [
             (c, scores[c.idx])

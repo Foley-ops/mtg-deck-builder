@@ -20,6 +20,11 @@ env/
 # Generated decklists
 *_gnn_b*.txt
 
+# User collection CSVs
+collection*.csv
+data/*.csv
+!data/data_template.csv
+
 # IDE
 .vscode/
 .idea/
