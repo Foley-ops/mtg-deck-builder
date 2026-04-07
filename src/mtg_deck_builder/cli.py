@@ -38,7 +38,7 @@ def main():
     p.add_argument("--generate-template", action="store_true",
                     help="Write collection_template.csv and exit")
     p.add_argument("--db", type=str, default=None, help="Path to SQLite database")
-    p.add_argument("--output-dir", type=str, default=".", help="Output directory for reports")
+    p.add_argument("--output-dir", type=str, default="./output", help="Output directory for reports")
     p.add_argument("--refresh", action="store_true", help="Force re-fetch all API data")
     p.add_argument("--clear-collection", action="store_true", help="Remove stored collection")
     p.add_argument("--force-train", action="store_true", help="Force re-training")

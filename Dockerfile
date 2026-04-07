@@ -23,5 +23,9 @@ COPY README.md .
 # Install package
 RUN pip install --no-cache-dir -e .
 
+# Output goes here by default -- mount this to get files out
+RUN mkdir -p /app/output
+VOLUME /app/output
+
 # Default: run tests
 CMD ["pytest", "tests/", "-v"]

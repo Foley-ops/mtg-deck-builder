@@ -23,7 +23,10 @@ pip install -e ".[dev]"
 Docker:
 ```bash
 docker build -t mtg-deck-builder .
-docker run --rm mtg-deck-builder python -m mtg_deck_builder --commander "Ms. Bumbleflower"
+
+# mount ./output so generated files land on your machine
+docker run --rm -v $(pwd)/output:/app/output mtg-deck-builder \
+  python -m mtg_deck_builder --commander "Ms. Bumbleflower"
 ```
 
 ## Usage

@@ -19,6 +19,7 @@ env/
 
 # Generated decklists
 *_gnn_b*.txt
+output/
 
 # User collection CSVs
 collection*.csv
