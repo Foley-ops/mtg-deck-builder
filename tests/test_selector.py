@@ -39,7 +39,7 @@ class TestDeckSize:
         selector = _build_selector(bant_commander, small_card_pool,
                                    small_graph_data, trained_model)
         for bracket in [1, 2, 3, 4]:
-            deck = selector.select(bracket)
+            deck, _ = selector.select(bracket)
             assert len(deck) == 99, f"Bracket {bracket}: got {len(deck)} cards"
 
 
@@ -49,7 +49,7 @@ class TestCommanderNotIn99:
         selector = _build_selector(bant_commander, small_card_pool,
                                    small_graph_data, trained_model)
         for bracket in [1, 2, 3, 4]:
-            deck = selector.select(bracket)
+            deck, _ = selector.select(bracket)
             deck_names = [c.name for c in deck]
             assert bant_commander.name not in deck_names
 
@@ -60,7 +60,7 @@ class TestColorIdentity:
         selector = _build_selector(bant_commander, small_card_pool,
                                    small_graph_data, trained_model)
         for bracket in [1, 2, 3, 4]:
-            deck = selector.select(bracket)
+            deck, _ = selector.select(bracket)
             for card in deck:
                 if card.color_identity and card.type_line != "Basic Land":
                     assert set(card.color_identity).issubset(bant_commander.color_identity), \
@@ -73,7 +73,7 @@ class TestSingleton:
         selector = _build_selector(bant_commander, small_card_pool,
                                    small_graph_data, trained_model)
         for bracket in [1, 2, 3, 4]:
-            deck = selector.select(bracket)
+            deck, _ = selector.select(bracket)
             nonbasics = [c.name for c in deck if c.type_line != "Basic Land"]
             assert len(nonbasics) == len(set(nonbasics)), \
                 f"B{bracket}: duplicate nonbasics found"
@@ -84,7 +84,7 @@ class TestBracketGameChangers:
                                          small_graph_data, trained_model):
         selector = _build_selector(bant_commander, small_card_pool,
                                    small_graph_data, trained_model)
-        deck = selector.select(1)
+        deck, _ = selector.select(1)
         gc = [c for c in deck if c.is_game_changer]
         assert len(gc) == 0
 
@@ -92,7 +92,7 @@ class TestBracketGameChangers:
                                          small_graph_data, trained_model):
         selector = _build_selector(bant_commander, small_card_pool,
                                    small_graph_data, trained_model)
-        deck = selector.select(2)
+        deck, _ = selector.select(2)
         gc = [c for c in deck if c.is_game_changer]
         assert len(gc) == 0
 
@@ -100,7 +100,7 @@ class TestBracketGameChangers:
                                             small_graph_data, trained_model):
         selector = _build_selector(bant_commander, small_card_pool,
                                    small_graph_data, trained_model)
-        deck = selector.select(3)
+        deck, _ = selector.select(3)
         gc = [c for c in deck if c.is_game_changer]
         assert len(gc) <= 3
 
@@ -110,7 +110,7 @@ class TestBracketMLD:
                                small_graph_data, trained_model):
         selector = _build_selector(bant_commander, small_card_pool,
                                    small_graph_data, trained_model)
-        deck = selector.select(1)
+        deck, _ = selector.select(1)
         mld = [c for c in deck if c.is_mld]
         assert len(mld) == 0
 
@@ -118,7 +118,7 @@ class TestBracketMLD:
                                    small_graph_data, trained_model):
         selector = _build_selector(bant_commander, small_card_pool,
                                    small_graph_data, trained_model)
-        deck = selector.select(4)
+        deck, _ = selector.select(4)
         # Bracket 4 allows MLD — just verify the deck is valid
         assert len(deck) == 99
 
@@ -128,7 +128,7 @@ class TestBracketExtraTurns:
                                             small_graph_data, trained_model):
         selector = _build_selector(bant_commander, small_card_pool,
                                    small_graph_data, trained_model)
-        deck = selector.select(1)
+        deck, _ = selector.select(1)
         et = [c for c in deck if c.is_extra_turn]
         assert len(et) <= 1
 
@@ -138,7 +138,7 @@ class TestBasicLandDistribution:
                                           small_graph_data, trained_model):
         selector = _build_selector(bant_commander, small_card_pool,
                                    small_graph_data, trained_model)
-        deck = selector.select(1)
+        deck, _ = selector.select(1)
         basics = [c for c in deck if c.type_line == "Basic Land"]
         nonbasics = [c for c in deck if c.type_line != "Basic Land"]
         assert len(basics) + len(nonbasics) == 99
@@ -147,7 +147,7 @@ class TestBasicLandDistribution:
                                           small_graph_data, trained_model):
         selector = _build_selector(bant_commander, small_card_pool,
                                    small_graph_data, trained_model)
-        deck = selector.select(1)
+        deck, _ = selector.select(1)
         basic_names = {c.name for c in deck if c.type_line == "Basic Land"}
         # Bant should use Plains, Island, Forest
         assert basic_names.issubset({"Plains", "Island", "Forest"})

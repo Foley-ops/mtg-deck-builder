@@ -69,6 +69,8 @@ class SynergyPredictor(nn.Module):
 
 
 def train_gnn(model, data, edge_weights, epochs=200, lr=1e-3, neg_ratio=5):
+    from tqdm import tqdm
+
     model.to(DEVICE)
     data = data.to(DEVICE)
     edge_weights = edge_weights.to(DEVICE)
@@ -77,7 +79,11 @@ def train_gnn(model, data, edge_weights, epochs=200, lr=1e-3, neg_ratio=5):
     num_nodes = data.x.size(0)
     losses = []
     model.train()
-    for epoch in range(epochs):
+
+    pbar = tqdm(range(epochs), desc="  Training", unit="ep",
+                bar_format="  {l_bar}{bar:30}{r_bar}")
+
+    for epoch in pbar:
         optimizer.zero_grad()
         emb = model.get_embeddings(data.x, data.edge_index)
         src, dst = data.edge_index[0], data.edge_index[1]
@@ -96,8 +102,6 @@ def train_gnn(model, data, edge_weights, epochs=200, lr=1e-3, neg_ratio=5):
         optimizer.step()
         scheduler.step()
         losses.append(loss.item())
-        if (epoch + 1) % 50 == 0:
-            print(
-                f"    Epoch {epoch+1:4d}/{epochs} | Loss: {loss.item():.4f} | LR: {scheduler.get_last_lr()[0]:.6f}"
-            )
+        pbar.set_postfix(loss=f"{loss.item():.4f}", lr=f"{scheduler.get_last_lr()[0]:.1e}")
+
     return losses

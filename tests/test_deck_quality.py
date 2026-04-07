@@ -37,7 +37,7 @@ class TestDeckQualityAllBrackets:
         self.commander = bant_commander
         self.decks = {}
         for b in [1, 2, 3, 4]:
-            self.decks[b] = selector.select(b)
+            self.decks[b], _ = selector.select(b)
 
     def test_all_decks_have_99_cards(self):
         for b, deck in self.decks.items():
@@ -108,8 +108,8 @@ class TestDeckQualityAllBrackets:
         graph = FakeGraph(small_card_pool, bant_commander.name, collection=collection)
         selector = DeckSelector(bant_commander, graph, model, data)
 
-        deck_normal = selector.select(3, prefer_owned=False)
-        deck_owned = selector.select(3, prefer_owned=True)
+        deck_normal, _ = selector.select(3, prefer_owned=False)
+        deck_owned, _ = selector.select(3, prefer_owned=True)
 
         owned_normal = sum(1 for c in deck_normal if c.owned_qty > 0)
         owned_boosted = sum(1 for c in deck_owned if c.owned_qty > 0)

@@ -20,8 +20,8 @@ class DeckSelector:
     @torch.no_grad()
     def select(self, bracket, archetype_idx=0, prefer_owned=False,
                synergy_weight=0.6, gnn_weight=0.4):
+        """Select a deck. Returns (deck, scores_array)."""
         rules = BRACKETS[bracket]
-        print(f"\n{'='*60}\nBRACKET {bracket}: {rules.description}\n{'='*60}")
 
         self.model.eval()
         self.model.to(DEVICE)
@@ -60,9 +60,7 @@ class DeckSelector:
             owned_in_pool = sum(1 for c in self.graph.cards.values() if c.owned_qty > 0)
             total = len(self.graph.cards)
             coverage = owned_in_pool / max(total, 1)
-            # less boost when you own most of the pool
             base_boost = 0.3 * (1.0 - coverage * 0.7)
-            # higher brackets reach for power even if unowned
             bracket_scale = {1: 1.0, 2: 1.0, 3: 0.5, 4: 0.25}.get(bracket, 0.5)
             boost = base_boost * bracket_scale
             for c in self.graph.cards.values():
@@ -124,8 +122,19 @@ class DeckSelector:
                         )
                     )
         deck = deck[:99]
-        self._print(deck, bracket, scores)
-        return deck
+
+        # compact terminal summary
+        nl = [c for c in deck if not c.is_land]
+        gc = [c for c in deck if c.is_game_changer]
+        price = sum(c.price_usd for c in deck if c.price_usd)
+        cmc_avg = sum(c.cmc for c in nl) / max(len(nl), 1)
+        buy_count = 0
+        if self.graph.collection:
+            buy_count = sum(1 for c in deck if c.owned_qty == 0 and c.type_line != "Basic Land")
+        print(f"  B{bracket}: {len(deck)} cards | GC: {len(gc)}/{rules.max_game_changers} | "
+              f"CMC: {cmc_avg:.2f} | ${price:.0f} | Buy: {buy_count}")
+
+        return deck, scores
 
     def _distribute_basics(self, need):
         """Split basics across commander colors."""
@@ -142,54 +151,3 @@ class DeckSelector:
             count = per_color + (1 if i < remainder else 0)
             basics.append((COLOR_TO_BASIC[color], count))
         return basics
-
-    def _print(self, deck, bracket, scores):
-        rules = BRACKETS[bracket]
-        nl = [c for c in deck if not c.is_land]
-        gc = [c for c in deck if c.is_game_changer]
-        basics = [c for c in deck if c.type_line == "Basic Land"]
-        price = sum(c.price_usd for c in deck if c.price_usd)
-        cmc = sum(c.cmc for c in nl) / max(len(nl), 1)
-
-        print(
-            f"\n  {len(deck)} cards + cmd | GC: {len(gc)}/{rules.max_game_changers} | "
-            f"CMC: {cmc:.2f} | ${price:.2f}"
-        )
-        if self.graph.collection:
-            buy = [c for c in deck if c.owned_qty == 0 and c.type_line != "Basic Land"]
-            print(
-                f"  Need to buy: {len(buy)} cards "
-                f"(${sum(c.price_usd for c in buy if c.price_usd):.2f})"
-            )
-
-        if gc:
-            print(f"\n  Game Changers:")
-            for c in gc:
-                print(f"    {c.name}")
-
-        nl.sort(
-            key=lambda c: scores[c.idx] if 0 <= c.idx < len(scores) else 0, reverse=True
-        )
-        print(f"\n  Top 25:")
-        for i, c in enumerate(nl[:25], 1):
-            s = scores[c.idx] if 0 <= c.idx < len(scores) else 0
-            t = ""
-            if c.is_game_changer:
-                t += " GC"
-            if c.owned_qty > 0:
-                t += " OWN"
-            p = f" ${c.price_usd:.2f}" if c.price_usd else ""
-            print(f"  {i:2d}. {c.name:40s} {s:.4f} syn={c.synergy_score:.2f}{t}{p}")
-
-        print(f"\n  --- Decklist (B{bracket}) ---")
-        print(f"  Commander: {self.commander.name}")
-        for c in sorted(deck, key=lambda c: (c.is_land, c.cmc, c.name)):
-            if c.type_line != "Basic Land":
-                own = " [OWN]" if c.owned_qty > 0 else ""
-                print(f"  1 {c.name}{own}")
-        bc = defaultdict(int)
-        for c in deck:
-            if c.type_line == "Basic Land":
-                bc[c.name] += 1
-        for n, ct in sorted(bc.items()):
-            print(f"  {ct} {n}")
