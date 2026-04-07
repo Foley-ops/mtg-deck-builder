@@ -1,0 +1,32 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "mtg-deck-builder"
+version = "1.0.0"
+description = "MTG Commander Deck Optimizer using Graph Attention Networks"
+readme = "README.md"
+requires-python = ">=3.10"
+license = "MIT"
+dependencies = [
+    "torch",
+    "torch-geometric",
+    "requests",
+    "numpy",
+]
+
+[project.scripts]
+mtg-deck-builder = "mtg_deck_builder.cli:main"
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "pytest-mock",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/mtg_deck_builder"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
