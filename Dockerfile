@@ -2,7 +2,7 @@ FROM python:3.12-slim
 
 WORKDIR /app
 
-# Install PyTorch CPU-only and PyG
+# Install PyTorch (CPU in Docker -- for MPS/CUDA, run natively)
 RUN pip install --no-cache-dir \
     torch --index-url https://download.pytorch.org/whl/cpu
 

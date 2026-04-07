@@ -13,11 +13,12 @@ pip install -e ".[dev]"
 
 Automatically uses CUDA (NVIDIA), MPS (Apple Silicon), or CPU -- whatever's available.
 
-For CPU-only installs:
+**Note**: Docker always runs CPU since MPS/CUDA can't pass through the Docker VM. To use your Mac's GPU, run natively:
+
 ```bash
-pip install torch --index-url https://download.pytorch.org/whl/cpu
-pip install torch-geometric requests numpy
+pip install torch torch-geometric requests numpy
 pip install -e ".[dev]"
+mtg-deck-builder --commander "Ms. Bumbleflower"  # uses MPS automatically
 ```
 
 Docker (recommended):
